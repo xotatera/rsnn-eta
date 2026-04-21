@@ -2,6 +2,7 @@ use crate::config::StdpConfig;
 use crate::network::{SnnNetwork, Synapse};
 
 /// STDP learning state.
+#[derive(Clone)]
 pub struct StdpState {
     pub last_spike: Vec<i32>,
     pub traces: Vec<Vec<f64>>,

@@ -1,4 +1,5 @@
 /// Encodes progress state into input features for the RSNN.
+#[derive(Clone)]
 pub struct Encoder {
     elapsed_max: f64,
     delta_ema: f64,

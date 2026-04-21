@@ -75,7 +75,7 @@ impl RsnnEtaBuilder {
         self
     }
 
-    pub fn build(self) -> RsnnEta {
+    fn build_core(self) -> (RsnnEtaCore, Option<PathBuf>) {
         let base = self.base_estimator.unwrap_or_else(|| {
             Box::new(EmaEstimator::new(self.ema_alpha, self.ema_warmup))
         });
@@ -87,11 +87,15 @@ impl RsnnEtaBuilder {
             self.burn_in_ticks,
             self.seed,
         );
+        (core, self.persistence_path)
+    }
 
+    pub fn build(self) -> RsnnEta {
+        let (core, persistence_path) = self.build_core();
         let mut eta = RsnnEta {
             core,
             signals_rx: None,
-            persistence_path: self.persistence_path,
+            persistence_path,
         };
 
         if let Some(ref path) = eta.persistence_path {
@@ -105,19 +109,7 @@ impl RsnnEtaBuilder {
 
     pub fn build_with_signals(self) -> (RsnnEta, mpsc::Sender<Vec<f64>>) {
         let (tx, rx) = mpsc::channel();
-        let persistence_path = self.persistence_path.clone();
-
-        let base = self.base_estimator.unwrap_or_else(|| {
-            Box::new(EmaEstimator::new(self.ema_alpha, self.ema_warmup))
-        });
-        let core = RsnnEtaCore::new(
-            self.net_config,
-            self.stdp_config,
-            self.decoder_config,
-            base,
-            self.burn_in_ticks,
-            self.seed,
-        );
+        let (core, persistence_path) = self.build_core();
 
         let mut eta = RsnnEta {
             core,

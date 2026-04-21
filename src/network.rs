@@ -3,7 +3,7 @@ use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 
 use crate::config::NetworkConfig;
-use crate::lif::{LifNeuron, NeuronConfig};
+use crate::lif::LifNeuron;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Synapse {
@@ -80,47 +80,6 @@ impl SnnNetwork {
             .collect()
     }
 
-    pub fn simulate(&mut self, input: &[f64], config: &NetworkConfig) -> Vec<f64> {
-        assert_eq!(input.len(), self.input_dim);
-        let n = self.num_neurons;
-        let neuron_config = NeuronConfig {
-            v_threshold: config.v_threshold,
-            v_reset: config.v_reset,
-            refractory_steps: config.refractory_steps,
-        };
-
-        for neuron in &mut self.neurons {
-            neuron.begin_tick();
-        }
-
-        let input_currents: Vec<f64> = self.input_synapses.iter().map(|syns| {
-            syns.iter().map(|&(feat, w)| w * input[feat]).sum()
-        }).collect();
-
-        for _step in 0..config.steps_per_tick {
-            let mut recurrent_currents = vec![0.0; n];
-            for (pre, syns) in self.recurrent_synapses.iter().enumerate() {
-                if !self.neurons[pre].spiked {
-                    continue;
-                }
-                for syn in syns {
-                    recurrent_currents[syn.target] += syn.weight;
-                }
-            }
-
-            for ni in 0..n {
-                self.neurons[ni].step(
-                    input_currents[ni] + recurrent_currents[ni],
-                    &neuron_config,
-                );
-            }
-        }
-
-        self.neurons.iter()
-            .map(|n| n.firing_rate(config.steps_per_tick))
-            .collect()
-    }
-
     pub fn output_neuron(&self) -> usize {
         self.num_neurons - 1
     }
@@ -189,29 +148,6 @@ mod tests {
         let ratio = actual as f64 / total_possible as f64;
         assert!((ratio - cfg.input_sparsity).abs() < 0.15,
             "input sparsity {ratio} far from target {}", cfg.input_sparsity);
-    }
-
-    #[test]
-    fn test_simulate_returns_firing_rates() {
-        let cfg = default_config();
-        let mut net = SnnNetwork::new(4, &cfg, 42);
-        let input = vec![0.5, 0.3, 0.8, 0.1];
-        let rates = net.simulate(&input, &cfg);
-        assert_eq!(rates.len(), cfg.num_neurons);
-        for &r in &rates {
-            assert!(r >= 0.0 && r <= 1.0, "firing rate {r} out of [0,1]");
-        }
-    }
-
-    #[test]
-    fn test_simulate_deterministic_same_seed() {
-        let cfg = default_config();
-        let mut net1 = SnnNetwork::new(4, &cfg, 42);
-        let mut net2 = SnnNetwork::new(4, &cfg, 42);
-        let input = vec![0.5, 0.3, 0.8, 0.1];
-        let r1 = net1.simulate(&input, &cfg);
-        let r2 = net2.simulate(&input, &cfg);
-        assert_eq!(r1, r2);
     }
 
     #[test]

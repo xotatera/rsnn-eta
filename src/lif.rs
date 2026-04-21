@@ -136,7 +136,9 @@ mod tests {
     }
 
     #[test]
-    fn test_tau_decay() {
+    fn test_slow_leak_fires_more() {
+        // Large tau means slow membrane leak, so charge accumulates faster
+        // and the neuron reaches threshold more often than a fast-leaking neuron.
         let config = NeuronConfig::default();
         let mut slow = LifNeuron::new(100.0);
         let mut fast = LifNeuron::new(3.0);

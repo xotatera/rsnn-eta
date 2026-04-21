@@ -15,6 +15,8 @@ pub struct RsnnEtaCore {
     pub decoder: Decoder,
     pub base_estimator: Box<dyn BaseEstimator>,
     pub net_config: NetworkConfig,
+    decoder_config: DecoderConfig,
+    seed: u64,
 
     pub(crate) tick_count: u64,
     burn_in_ticks: u64,
@@ -49,6 +51,8 @@ impl RsnnEtaCore {
             decoder,
             base_estimator,
             net_config,
+            decoder_config,
+            seed,
             tick_count: 0,
             burn_in_ticks,
             last_predicted_step_dt: None,
@@ -77,7 +81,7 @@ impl RsnnEtaCore {
 
         if encoded.features.len() != self.network.input_dim {
             self.network = SnnNetwork::new(
-                encoded.features.len(), &self.net_config, 42,
+                encoded.features.len(), &self.net_config, self.seed,
             );
             self.stdp = StdpState::new(&self.network, self.stdp.config.clone());
         }
@@ -186,9 +190,9 @@ impl RsnnEtaCore {
     pub fn reset(&mut self) {
         self.encoder.reset();
         let input_dim = self.encoder.input_dim;
-        self.network = SnnNetwork::new(input_dim, &self.net_config, 42);
+        self.network = SnnNetwork::new(input_dim, &self.net_config, self.seed);
         self.stdp = StdpState::new(&self.network, self.stdp.config.clone());
-        self.decoder.reset(&DecoderConfig::default());
+        self.decoder.reset(&self.decoder_config);
         self.base_estimator.reset();
         self.tick_count = 0;
         self.last_predicted_step_dt = None;
@@ -204,11 +208,13 @@ impl Clone for RsnnEtaCore {
     fn clone(&self) -> Self {
         Self {
             network: self.network.clone(),
-            stdp: StdpState::new(&self.network, self.stdp.config.clone()),
-            encoder: Encoder::new(),
+            stdp: self.stdp.clone(),
+            encoder: self.encoder.clone(),
             decoder: self.decoder.clone(),
             base_estimator: self.base_estimator.clone_box(),
             net_config: self.net_config.clone(),
+            decoder_config: self.decoder_config.clone(),
+            seed: self.seed,
             tick_count: self.tick_count,
             burn_in_ticks: self.burn_in_ticks,
             last_predicted_step_dt: self.last_predicted_step_dt,
