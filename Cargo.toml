@@ -1,6 +1,6 @@
 [package]
 name = "rsnn-eta"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Biologically-inspired ETA estimator using a Recurrent Spiking Neural Network with STDP learning"
 license = "MIT"

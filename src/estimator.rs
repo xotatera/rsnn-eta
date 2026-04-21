@@ -83,9 +83,9 @@ impl BaseEstimator for EmaEstimator {
         if self.tick_count > 0 {
             let dt = elapsed_secs - self.last_elapsed;
             let dp = position.saturating_sub(self.last_position);
-            if dp > 0 {
+            if dp > 0 && dt > 0.0 {
                 let step_dur = dt / dp as f64;
-                if self.tick_count == 1 {
+                if self.ema_step_duration == 0.0 {
                     self.ema_step_duration = step_dur;
                 } else {
                     self.ema_step_duration = self.alpha * step_dur
