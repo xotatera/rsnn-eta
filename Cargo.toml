@@ -8,7 +8,7 @@ repository = "https://github.com/xotatera/rsnn-eta"
 homepage = "https://github.com/xotatera/rsnn-eta"
 documentation = "https://docs.rs/rsnn-eta"
 readme = "README.md"
-keywords = ["eta", "progress", "spiking-neural-network", "stdp", "estimator"]
+keywords = ["eta", "progress", "spiking-network", "stdp", "estimator"]
 categories = ["algorithms", "science"]
 exclude = ["docs/"]
 
