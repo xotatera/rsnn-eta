@@ -15,6 +15,12 @@ pub struct EncodedInput {
     pub temporal_spike_frac: f64,
 }
 
+impl Default for Encoder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Encoder {
     pub fn new() -> Self {
         Self {

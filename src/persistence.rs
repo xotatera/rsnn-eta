@@ -21,7 +21,7 @@ pub fn save(core: &RsnnEtaCore, path: &Path) -> io::Result<()> {
         decoder: core.decoder.clone(),
     };
     let bytes = bincode::serialize(&snapshot)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        .map_err(io::Error::other)?;
     std::fs::write(path, bytes)
 }
 
@@ -29,7 +29,7 @@ pub fn save(core: &RsnnEtaCore, path: &Path) -> io::Result<()> {
 pub fn load(core: &mut RsnnEtaCore, path: &Path) -> io::Result<()> {
     let bytes = std::fs::read(path)?;
     let snapshot: Snapshot = bincode::deserialize(&bytes)
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        .map_err(io::Error::other)?;
     core.network = snapshot.network;
     core.decoder = snapshot.decoder;
     core.stdp = crate::stdp::StdpState::new(&core.network, core.stdp.config.clone());

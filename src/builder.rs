@@ -19,6 +19,12 @@ pub struct RsnnEtaBuilder {
     seed: u64,
 }
 
+impl Default for RsnnEtaBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RsnnEtaBuilder {
     pub fn new() -> Self {
         Self {
@@ -185,10 +191,7 @@ impl RsnnEta {
     pub fn save(&self) -> std::io::Result<()> {
         match &self.persistence_path {
             Some(path) => crate::persistence::save(&self.core, path),
-            None => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "no persistence path configured",
-            )),
+            None => Err(std::io::Error::other("no persistence path configured")),
         }
     }
 
@@ -199,10 +202,7 @@ impl RsnnEta {
                 crate::persistence::load(&mut self.core, path)?;
                 Ok(())
             }
-            None => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "no persistence path configured",
-            )),
+            None => Err(std::io::Error::other("no persistence path configured")),
         }
     }
 }

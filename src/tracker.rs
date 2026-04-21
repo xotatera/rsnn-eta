@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use crate::config::{self, DecoderConfig, NetworkConfig, StdpConfig};
 use crate::decoder::Decoder;
 use crate::encoder::Encoder;
-use crate::estimator::{BaseEstimator, EmaEstimator};
+use crate::estimator::BaseEstimator;
 use crate::network::SnnNetwork;
 use crate::stdp::StdpState;
 
@@ -225,6 +225,7 @@ impl Clone for RsnnEtaCore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::estimator::EmaEstimator;
 
     fn make_core() -> RsnnEtaCore {
         RsnnEtaCore::new(
