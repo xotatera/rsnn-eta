@@ -39,7 +39,7 @@ pub const DEFAULT_CONFIDENCE_ALPHA: f64 = 0.1;
 
 // ── EMA defaults ──
 pub const DEFAULT_EMA_ALPHA: f64 = 0.05;
-pub const DEFAULT_EMA_WARMUP: u64 = 10;
+pub const DEFAULT_EMA_WARMUP: u64 = 2;
 
 /// RSNN reservoir topology configuration.
 ///
