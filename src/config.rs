@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 // ── Network defaults ──
-pub const DEFAULT_NUM_NEURONS: usize = 50;
-pub const DEFAULT_STEPS_PER_TICK: u32 = 20;
+pub const DEFAULT_NUM_NEURONS: usize = 10;
+pub const DEFAULT_STEPS_PER_TICK: u32 = 5;
 pub const DEFAULT_INPUT_SPARSITY: f64 = 0.3;
 pub const DEFAULT_RECURRENT_SPARSITY: f64 = 0.1;
 pub const DEFAULT_EXCITATORY_FRAC: f64 = 0.8;
