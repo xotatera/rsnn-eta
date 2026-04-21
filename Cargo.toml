@@ -1,0 +1,19 @@
+[package]
+name = "rsnn-eta"
+version = "0.1.0"
+edition = "2021"
+description = "RSNN+STDP correction factor ETA estimator for indicatif"
+license = "MIT"
+
+[dependencies]
+indicatif = "0.17"
+serde = { version = "1", features = ["derive"] }
+bincode = "1"
+rand = "0.8"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "tick"
+harness = false
