@@ -6,7 +6,6 @@ description = "RSNN+STDP correction factor ETA estimator for indicatif"
 license = "MIT"
 
 [dependencies]
-indicatif = "0.17"
 serde = { version = "1", features = ["derive"] }
 bincode = "1"
 rand = { version = "0.8", features = ["small_rng"] }

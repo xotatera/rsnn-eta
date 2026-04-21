@@ -1,10 +1,6 @@
-use std::fmt;
 use std::path::PathBuf;
-use std::sync::{mpsc, Mutex};
-use std::time::Instant;
-
-use indicatif::style::ProgressTracker;
-use indicatif::ProgressState;
+use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 use crate::config::{self, DecoderConfig, NetworkConfig, StdpConfig};
 use crate::estimator::{BaseEstimator, EmaEstimator};
@@ -119,7 +115,7 @@ impl RsnnEtaBuilder {
 
         let mut eta = RsnnEta {
             core,
-            signals_rx: Some(Mutex::new(rx)),
+            signals_rx: Some(rx),
             persistence_path,
         };
 
@@ -133,22 +129,59 @@ impl RsnnEtaBuilder {
     }
 }
 
-/// indicatif-compatible RSNN ETA estimator.
+/// RSNN-based ETA estimator with STDP correction factor.
 pub struct RsnnEta {
     pub core: RsnnEtaCore,
-    pub signals_rx: Option<Mutex<mpsc::Receiver<Vec<f64>>>>,
+    pub signals_rx: Option<mpsc::Receiver<Vec<f64>>>,
     pub persistence_path: Option<PathBuf>,
 }
 
 impl RsnnEta {
+    /// Zero-config constructor with defaults.
     pub fn new() -> Self {
         Self::builder().build()
     }
 
+    /// Start building a customized estimator.
     pub fn builder() -> RsnnEtaBuilder {
         RsnnEtaBuilder::new()
     }
 
+    /// Process one progress tick. Drains any pending side-channel signals,
+    /// then delegates to the core. Returns corrected ETA or None if not warmed up.
+    pub fn tick(
+        &mut self,
+        position: u64,
+        length: u64,
+        elapsed: Duration,
+        now: Instant,
+    ) -> Option<Duration> {
+        // Drain side-channel signals
+        if let Some(ref rx) = self.signals_rx {
+            while let Ok(signals) = rx.try_recv() {
+                self.core.encoder.set_side_channel(signals);
+            }
+        }
+
+        self.core.tick(position, length, elapsed, now)
+    }
+
+    /// Reset all state (preserves loaded weights if persistence is enabled).
+    pub fn reset(&mut self) {
+        self.core.reset();
+    }
+
+    /// Get the last computed ETA.
+    pub fn last_eta(&self) -> Option<Duration> {
+        self.core.last_eta
+    }
+
+    /// Get current confidence level [0, 1].
+    pub fn confidence(&self) -> f64 {
+        self.core.confidence()
+    }
+
+    /// Save weights to the configured persistence path.
     pub fn save(&self) -> std::io::Result<()> {
         match &self.persistence_path {
             Some(path) => crate::persistence::save(&self.core, path),
@@ -159,6 +192,7 @@ impl RsnnEta {
         }
     }
 
+    /// Load weights from the configured persistence path.
     pub fn load(&mut self) -> std::io::Result<()> {
         match &self.persistence_path {
             Some(path) => {
@@ -179,52 +213,6 @@ impl Default for RsnnEta {
     }
 }
 
-impl ProgressTracker for RsnnEta {
-    fn clone_box(&self) -> Box<dyn ProgressTracker> {
-        Box::new(RsnnEta {
-            core: self.core.clone(),
-            signals_rx: None,
-            persistence_path: self.persistence_path.clone(),
-        })
-    }
-
-    fn tick(&mut self, state: &ProgressState, now: Instant) {
-        if let Some(ref rx_mutex) = self.signals_rx {
-            if let Ok(rx) = rx_mutex.lock() {
-                while let Ok(signals) = rx.try_recv() {
-                    self.core.encoder.set_side_channel(signals);
-                }
-            }
-        }
-
-        let position = state.pos();
-        let length = state.len().unwrap_or(0);
-        let elapsed = state.elapsed();
-
-        self.core.tick(position, length, elapsed, now);
-    }
-
-    fn reset(&mut self, _state: &ProgressState, _now: Instant) {
-        self.core.reset();
-    }
-
-    fn write(&self, _state: &ProgressState, w: &mut dyn fmt::Write) {
-        match self.core.last_eta {
-            Some(eta) => {
-                let secs = eta.as_secs();
-                if secs >= 3600 {
-                    let _ = write!(w, "{:02}:{:02}:{:02}", secs / 3600, (secs % 3600) / 60, secs % 60);
-                } else {
-                    let _ = write!(w, "{:02}:{:02}", secs / 60, secs % 60);
-                }
-            }
-            None => {
-                let _ = write!(w, "--:--");
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -232,13 +220,13 @@ mod tests {
     #[test]
     fn test_new_default() {
         let eta = RsnnEta::new();
-        assert!(eta.core.last_eta.is_none());
+        assert!(eta.last_eta().is_none());
     }
 
     #[test]
     fn test_builder_defaults() {
         let eta = RsnnEta::builder().build();
-        assert!(eta.core.last_eta.is_none());
+        assert!(eta.last_eta().is_none());
     }
 
     #[test]
@@ -276,5 +264,22 @@ mod tests {
             eta1.core.network.neurons[0].tau,
             eta2.core.network.neurons[0].tau,
         );
+    }
+
+    #[test]
+    fn test_tick_and_eta() {
+        let mut eta = RsnnEta::builder()
+            .neurons(20)
+            .steps_per_tick(5)
+            .burn_in_ticks(2)
+            .seed(42)
+            .build();
+
+        let start = Instant::now();
+        for i in 1..=20 {
+            let elapsed = Duration::from_millis(i * 100);
+            eta.tick(i * 10, 1000, elapsed, start + elapsed);
+        }
+        assert!(eta.last_eta().is_some());
     }
 }
