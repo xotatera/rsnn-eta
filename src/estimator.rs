@@ -2,17 +2,31 @@ use std::time::Duration;
 
 use crate::config;
 
-/// Pluggable base ETA estimator trait.
+/// Pluggable base ETA estimator.
+///
+/// Implement this trait to provide a custom baseline for the RSNN correction factor.
+/// The default implementation is [`EmaEstimator`], which uses an exponential moving
+/// average of per-step duration.
 pub trait BaseEstimator: Send + Sync {
+    /// Feed a new progress observation.
     fn update(&mut self, position: u64, length: u64, elapsed: Duration);
+    /// Return the estimated remaining time, or `None` if not ready.
     fn estimate(&self) -> Option<Duration>;
+    /// Whether the estimator has seen enough data to produce useful estimates.
     fn is_warm(&self) -> bool;
+    /// Reset all internal state.
     fn reset(&mut self);
+    /// Current estimated processing rate (steps per second).
     fn steps_per_sec(&self) -> f64;
+    /// Clone into a boxed trait object.
     fn clone_box(&self) -> Box<dyn BaseEstimator>;
 }
 
 /// EMA-based estimator tracking exponentially weighted step duration.
+///
+/// Computes `ETA = remaining_steps * ema_step_duration` where the step duration
+/// is smoothed with an exponential moving average (configurable alpha).
+/// Returns `None` until `warmup_ticks` observations have been collected.
 pub struct EmaEstimator {
     alpha: f64,
     warmup_ticks: u64,

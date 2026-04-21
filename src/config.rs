@@ -41,9 +41,13 @@ pub const DEFAULT_CONFIDENCE_ALPHA: f64 = 0.1;
 pub const DEFAULT_EMA_ALPHA: f64 = 0.05;
 pub const DEFAULT_EMA_WARMUP: u64 = 10;
 
-/// Network topology configuration.
+/// RSNN reservoir topology configuration.
+///
+/// Controls neuron count, connectivity sparsity, excitatory/inhibitory ratio,
+/// LIF neuron parameters, and temporal coding injection fraction.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NetworkConfig {
+    /// Number of LIF neurons in the reservoir (default: 50).
     pub num_neurons: usize,
     pub steps_per_tick: u32,
     pub input_sparsity: f64,
@@ -79,7 +83,10 @@ impl Default for NetworkConfig {
     }
 }
 
-/// STDP learning configuration.
+/// Spike-Timing-Dependent Plasticity (STDP) learning configuration.
+///
+/// Controls the learning rate, LTP/LTD amplitudes, eligibility trace decay,
+/// weight bounds, and error modulation strength.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StdpConfig {
     pub eta_stdp: f64,
@@ -123,7 +130,11 @@ impl Default for StdpConfig {
     }
 }
 
-/// Decoder configuration.
+/// Correction factor decoder configuration.
+///
+/// The decoder maps the output neuron's firing rate to a correction factor via
+/// `exp(scale * (rate - 0.5))`. `scale` is learnable and adjusted by the ratio
+/// error signal.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DecoderConfig {
     pub initial_scale: f64,

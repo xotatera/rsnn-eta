@@ -6,7 +6,11 @@ use crate::config::{self, DecoderConfig, NetworkConfig, StdpConfig};
 use crate::estimator::{BaseEstimator, EmaEstimator};
 use crate::tracker::RsnnEtaCore;
 
-/// Builder for configuring an RSNN ETA estimator.
+/// Builder for configuring an [`RsnnEta`] estimator.
+///
+/// All parameters have sensible defaults. Call [`build()`](Self::build) for a standard
+/// estimator or [`build_with_signals()`](Self::build_with_signals) to get a side-channel
+/// sender for injecting extra features at runtime.
 pub struct RsnnEtaBuilder {
     net_config: NetworkConfig,
     stdp_config: StdpConfig,
@@ -40,36 +44,47 @@ impl RsnnEtaBuilder {
         }
     }
 
+    /// Set the number of neurons in the RSNN reservoir (default: 50).
     pub fn neurons(mut self, n: usize) -> Self {
         self.net_config.num_neurons = n;
         self
     }
 
+    /// Set the number of LIF simulation steps per progress tick (default: 20).
     pub fn steps_per_tick(mut self, n: u32) -> Self {
         self.net_config.steps_per_tick = n;
         self
     }
 
+    /// Replace the default EMA base estimator with a custom [`BaseEstimator`].
     pub fn base_estimator(mut self, est: Box<dyn BaseEstimator>) -> Self {
         self.base_estimator = Some(est);
         self
     }
 
+    /// Set the EMA smoothing factor for the default base estimator (default: 0.05).
+    /// Ignored if a custom [`base_estimator`](Self::base_estimator) is provided.
     pub fn ema_alpha(mut self, alpha: f64) -> Self {
         self.ema_alpha = alpha;
         self
     }
 
+    /// Set the number of ticks before STDP learning activates (default: 10).
+    /// During burn-in, the RSNN runs but weights are frozen and the correction
+    /// factor is damped toward 1.0 (pure base estimator output).
     pub fn burn_in_ticks(mut self, n: u64) -> Self {
         self.burn_in_ticks = n;
         self
     }
 
+    /// Enable weight persistence. Weights are auto-loaded on [`build()`](Self::build)
+    /// if the file exists, and can be saved later via [`RsnnEta::save()`].
     pub fn persistence(mut self, path: impl Into<PathBuf>) -> Self {
         self.persistence_path = Some(path.into());
         self
     }
 
+    /// Set the RNG seed for network initialization (default: 42).
     pub fn seed(mut self, s: u64) -> Self {
         self.seed = s;
         self
@@ -90,6 +105,7 @@ impl RsnnEtaBuilder {
         (core, self.persistence_path)
     }
 
+    /// Build the estimator.
     pub fn build(self) -> RsnnEta {
         let (core, persistence_path) = self.build_core();
         let mut eta = RsnnEta {
@@ -107,6 +123,11 @@ impl RsnnEtaBuilder {
         eta
     }
 
+    /// Build the estimator with a side-channel signal sender.
+    ///
+    /// Returns `(estimator, sender)`. Send `Vec<f64>` on the sender to inject
+    /// additional input features beyond the standard progress state. The dimension
+    /// is fixed on the first send and must remain constant.
     pub fn build_with_signals(self) -> (RsnnEta, mpsc::Sender<Vec<f64>>) {
         let (tx, rx) = mpsc::channel();
         let (core, persistence_path) = self.build_core();
